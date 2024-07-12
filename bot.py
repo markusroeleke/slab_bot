@@ -48,6 +48,7 @@ class Bot:
         self.left = True
         self.counter = 0
         self.stuck_counter = 0
+        self.stuck_course = 0
         
         self.old_position = Location(longitude=config.start.longitude, latitude=config.start.latitude)
 
@@ -180,11 +181,20 @@ class Bot:
         new_position = Location(longitude=longitude, latitude=latitude)
         water = self.old_position != new_position
         if not bool(water):
-            course_angle = course_angle + 20 * self.stuck_counter
+            if course_angle > 180:
+                course_angle -= 135
+            else:
+                course_angle += 135
+
+            self.stuck_course = course_angle
             self.stuck_counter += 1 
-            #print(f"got stuck {self.stuck_counter} in  {water=}")
+            print(f"got stuck {self.stuck_counter} in  {water=} with new course {course_angle}")
         else:
-            self.stuck_counter = 0
+            if self.stuck_counter:
+                self.stuck_counter += 1
+                course_angle = self.stuck_course
+            if self.stuck_counter >= 10:
+                self.stuck_counter = 0
          #+ wind_angle
             instructions.heading = Heading(course_angle)
 
