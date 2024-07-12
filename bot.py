@@ -188,7 +188,7 @@ class Bot:
 
             self.stuck_course = course_angle
             self.stuck_counter += 1 
-            print(f"got stuck {self.stuck_counter} in  {water=} with new course {course_angle}")
+            #print(f"got stuck {self.stuck_counter} in  {water=} with new course {course_angle}")
         else:
             if self.stuck_counter:
                 self.stuck_counter += 1
