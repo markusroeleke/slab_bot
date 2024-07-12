@@ -47,6 +47,9 @@ class Bot:
         ]
         self.left = True
         self.counter = 0
+        self.stuck_counter = 0
+        
+        self.old_position = Location(longitude=config.start.longitude, latitude=config.start.latitude)
 
     def run(
         self,
@@ -174,13 +177,18 @@ class Bot:
             course_angle = next_checkpoint_angle
             
         # colition detection 
-        if not world_map(latitudes=latitude, longitudes=longitude):
-            instructions.left = 100
+        new_position = Location(longitude=longitude, latitude=latitude)
+        water = self.old_position != new_position
+        if not bool(water):
+            course_angle = course_angle + 20 * self.stuck_counter
+            self.stuck_counter += 1 
+            print(f"got stuck {self.stuck_counter} in  {water=}")
         else:
+            self.stuck_counter = 0
          #+ wind_angle
             instructions.heading = Heading(course_angle)
 
-
+        self.old_position = new_position
         return instructions
 
     def _get_angle(self, vec):
