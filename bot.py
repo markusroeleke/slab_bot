@@ -149,6 +149,7 @@ class Bot:
         # adjust the course a little bit acording to winfd angle
         max_wind_angle = 50
         min_wind_angle = 135
+        #print(f"{dt=}")
         if abs(next_checkpoint_angle-wind_angle) < max_wind_angle and next_checkpoint.radius > 50: # back wind
             if dist > 5.0 * next_checkpoint.radius or next_checkpoint.radius > 500:
                 factor = 1 - (abs(next_checkpoint_angle-wind_angle) / max_wind_angle)
@@ -169,6 +170,20 @@ class Bot:
                     course_angle = next_checkpoint_angle + (next_checkpoint_angle-wind_angle) * factor
                     self.counter += 1
                     if self.counter >= 5:
+                        self.left = True
+                        self.counter = 0
+            elif dist > 1.0 * next_checkpoint.radius: 
+                factor = 1  - (min_wind_angle / abs(next_checkpoint_angle-wind_angle))
+                if self.left:
+                    course_angle = next_checkpoint_angle - (next_checkpoint_angle-wind_angle) * factor
+                    self.counter += 1
+                    if self.counter >= 2:
+                        self.left = False
+                        self.counter = 0
+                else:
+                    course_angle = next_checkpoint_angle + (next_checkpoint_angle-wind_angle) * factor
+                    self.counter += 1
+                    if self.counter >= 2:
                         self.left = True
                         self.counter = 0
                 #print(f"{wind_angle=} {next_checkpoint_angle=} -> {course_angle=}")
