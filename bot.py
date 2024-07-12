@@ -33,7 +33,7 @@ class Bot:
             Checkpoint(latitude=6.671194522393581,longitude=-78.33150587841799, radius=40),
             Checkpoint(latitude=1.5841160481860714,longitude=-91.73960230587916, radius=100.0), # over glapagos islands
             Checkpoint(latitude=2.806318, longitude=-168.943864, radius=1990.0),
-            Checkpoint(latitude=-29.564847188268974, longitude=172.2733733906634, radius=100.0), # over new seeland
+            Checkpoint(latitude=-32.564847188268974, longitude=172.2733733906634, radius=100.0), # over new seeland
             Checkpoint(latitude=-45.052286, longitude=146.214572, radius=100.0), # below tasmania
             Checkpoint(latitude=-15.668984, longitude=77.674694, radius=1190.0),
             Checkpoint(latitude=-39.438937, longitude=19.836265, radius=100.0),
