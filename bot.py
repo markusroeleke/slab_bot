@@ -3,6 +3,7 @@
 # flake8: noqa F401
 from collections.abc import Callable
 
+
 import numpy as np
 
 from vendeeglobe import (
@@ -13,8 +14,7 @@ from vendeeglobe import (
     Vector,
     config,
 )
-from vendeeglobe.utils import distance_on_surface
-
+from vendeeglobe.utils import distance_on_surface, goto
 
 class Bot:
     """
@@ -22,25 +22,31 @@ class Bot:
     """
 
     def __init__(self):
-        self.team = "TeamName"  # This is your team name
+        self.team = "SLaB"  # This is your team name
         # This is the course that the ship has to follow
         self.course = [
-            Checkpoint(latitude=43.797109, longitude=-11.264905, radius=50),
-            Checkpoint(longitude=-29.908577, latitude=17.999811, radius=50),
-            Checkpoint(latitude=-11.441808, longitude=-29.660252, radius=50),
-            Checkpoint(longitude=-63.240264, latitude=-61.025125, radius=50),
+            Checkpoint(latitude=43.797109, longitude=-11.264905, radius=100),
+            Checkpoint(latitude=42, longitude=-29.0518, radius=100),
+            Checkpoint(latitude=20.256440868994147,longitude=-62.734644270082256, radius=60),
+            Checkpoint(latitude=15.265393163063342,longitude=-65.72726404185893, radius=40),
+            Checkpoint(latitude=10.426543935069509,longitude=-80.92130587774096, radius=40),
+            Checkpoint(latitude=6.671194522393581,longitude=-78.33150587841799, radius=40),
+            Checkpoint(latitude=1.5841160481860714,longitude=-91.73960230587916, radius=100.0), # over glapagos islands
             Checkpoint(latitude=2.806318, longitude=-168.943864, radius=1990.0),
-            Checkpoint(latitude=-62.052286, longitude=169.214572, radius=50.0),
+            Checkpoint(latitude=-29.564847188268974, longitude=172.2733733906634, radius=100.0), # over new seeland
+            Checkpoint(latitude=-45.052286, longitude=146.214572, radius=100.0), # below tasmania
             Checkpoint(latitude=-15.668984, longitude=77.674694, radius=1190.0),
-            Checkpoint(latitude=-39.438937, longitude=19.836265, radius=50.0),
-            Checkpoint(latitude=14.881699, longitude=-21.024326, radius=50.0),
-            Checkpoint(latitude=44.076538, longitude=-18.292936, radius=50.0),
+            Checkpoint(latitude=-39.438937, longitude=19.836265, radius=100.0),
+            Checkpoint(latitude=14.881699, longitude=-21.024326, radius=100.0),
+            Checkpoint(latitude=44.076538, longitude=-18.292936, radius=100.0),
             Checkpoint(
                 latitude=config.start.latitude,
                 longitude=config.start.longitude,
                 radius=5,
             ),
         ]
+        self.left = True
+        self.counter = 0
 
     def run(
         self,
@@ -102,35 +108,85 @@ class Bot:
         # Initialize the instructions
         instructions = Instructions()
 
-        # TODO: Remove this, it's only for testing =================
-        current_position_forecast = forecast(
-            latitudes=latitude, longitudes=longitude, times=0
-        )
-        current_position_terrain = world_map(latitudes=latitude, longitudes=longitude)
         # ===========================================================
 
         # Go through all checkpoints and find the next one to reach
-        for ch in self.course:
+        for next_checkpoint in self.course:
             # Compute the distance to the checkpoint
             dist = distance_on_surface(
                 longitude1=longitude,
                 latitude1=latitude,
-                longitude2=ch.longitude,
-                latitude2=ch.latitude,
+                longitude2=next_checkpoint.longitude,
+                latitude2=next_checkpoint.latitude,
             )
             # Consider slowing down if the checkpoint is close
             jump = dt * np.linalg.norm(speed)
-            if dist < 2.0 * ch.radius + jump:
-                instructions.sail = min(ch.radius / jump, 1)
+            if dist < 2.0 * next_checkpoint.radius + jump:
+                instructions.sail = min(next_checkpoint.radius / jump, 1)
             else:
                 instructions.sail = 1.0
             # Check if the checkpoint has been reached
-            if dist < ch.radius:
-                ch.reached = True
-            if not ch.reached:
-                instructions.location = Location(
-                    longitude=ch.longitude, latitude=ch.latitude
-                )
+            if dist < next_checkpoint.radius:
+                next_checkpoint.reached = True
+                self.set_new_course = True
+            if not next_checkpoint.reached:
                 break
+        
+        next_checkpoint_angle = goto(
+                origin=Location(longitude=longitude, latitude=latitude),
+                to=Location(longitude=next_checkpoint.longitude, latitude=next_checkpoint.latitude)
+                )
+
+        # correct for better wind usage
+        u,v = forecast(
+            latitudes=latitude, longitudes=longitude, times=0
+        )
+        wind_angle = self._get_angle([u, v])
+        # adjust the course a little bit acording to winfd angle
+        max_wind_angle = 50
+        min_wind_angle = 135
+        if abs(next_checkpoint_angle-wind_angle) < max_wind_angle and next_checkpoint.radius > 50: # back wind
+            if dist > 5.0 * next_checkpoint.radius or next_checkpoint.radius > 500:
+                factor = 1 - (abs(next_checkpoint_angle-wind_angle) / max_wind_angle)
+                course_angle = next_checkpoint_angle - (next_checkpoint_angle-wind_angle) * factor
+                #print(f"{wind_angle=} {next_checkpoint_angle=} -> {course_angle=}")
+            else:
+                course_angle = next_checkpoint_angle
+        elif abs(next_checkpoint_angle-wind_angle) > min_wind_angle and next_checkpoint.radius > 50: #front wind
+            if dist > 2.0 * next_checkpoint.radius or next_checkpoint.radius > 500:
+                factor = 1  - (min_wind_angle / abs(next_checkpoint_angle-wind_angle))
+                if self.left:
+                    course_angle = next_checkpoint_angle - (next_checkpoint_angle-wind_angle) * factor
+                    self.counter += 1
+                    if self.counter >= 5:
+                        self.left = False
+                        self.counter = 0
+                else:
+                    course_angle = next_checkpoint_angle + (next_checkpoint_angle-wind_angle) * factor
+                    self.counter += 1
+                    if self.counter >= 5:
+                        self.left = True
+                        self.counter = 0
+                #print(f"{wind_angle=} {next_checkpoint_angle=} -> {course_angle=}")
+            else:
+                course_angle = next_checkpoint_angle
+        else:
+            course_angle = next_checkpoint_angle
+            
+        # colition detection 
+        if not world_map(latitudes=latitude, longitudes=longitude):
+            instructions.left = 100
+        else:
+         #+ wind_angle
+            instructions.heading = Heading(course_angle)
+
 
         return instructions
+
+    def _get_angle(self, vec):
+        vec = np.asarray(vec) / np.linalg.norm(vec)
+        angle = np.arccos(np.dot(vec, [1, 0])) * 180 / np.pi
+        if vec[1] < 0:
+            angle = 360 - angle
+        return angle
+

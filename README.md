@@ -1,4 +1,4 @@
-# template_bot
+# slab_bot (Sail Like a Bosch)
 
 This is the template python bot for `vendeeglobe` Europython 2024 game tournament.
 
