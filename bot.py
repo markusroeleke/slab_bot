@@ -182,7 +182,7 @@ class Bot:
         if not bool(water):
             course_angle = course_angle + 20 * self.stuck_counter
             self.stuck_counter += 1 
-            print(f"got stuck {self.stuck_counter} in  {water=}")
+            #print(f"got stuck {self.stuck_counter} in  {water=}")
         else:
             self.stuck_counter = 0
          #+ wind_angle
